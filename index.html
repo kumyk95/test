@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Runner Game</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+<div id="info">Use Left/Right arrow keys to move</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
+<script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Lighting
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(0, 5, 5);
+    scene.add(light);
+
+    // Ground
+    const groundGeometry = new THREE.PlaneGeometry(30, 200);
+    const groundMaterial = new THREE.MeshPhongMaterial({color: 0x228b22});
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.z = -90;
+    scene.add(ground);
+
+    // Player (simple box for now)
+    const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
+    const playerMaterial = new THREE.MeshPhongMaterial({color: 0xffa500});
+    const player = new THREE.Mesh(playerGeometry, playerMaterial);
+    player.position.y = 1;
+    scene.add(player);
+
+    camera.position.set(0, 3, 6);
+    camera.lookAt(player.position);
+
+    // Obstacles
+    const obstacles = [];
+    const obstacleMaterial = new THREE.MeshPhongMaterial({color: 0x8b0000});
+
+    function createObstacle(zPos) {
+        const width = 1 + Math.random() * 1.5;
+        const height = 1 + Math.random() * 2;
+        const geometry = new THREE.BoxGeometry(width, height, 1);
+        const obstacle = new THREE.Mesh(geometry, obstacleMaterial.clone());
+        obstacle.position.set((Math.random() * 6) - 3, height / 2, zPos);
+        scene.add(obstacle);
+        obstacles.push(obstacle);
+    }
+
+    // Create initial obstacles
+    for (let i = 0; i < 20; i++) {
+        createObstacle(-10 - i * 10);
+    }
+
+    let lane = 0; // -1 left, 0 center, 1 right
+
+    function updatePlayerPosition() {
+        player.position.x = lane * 3;
+        camera.position.x = player.position.x;
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') {
+            lane = Math.max(lane - 1, -1);
+            updatePlayerPosition();
+        } else if (event.key === 'ArrowRight') {
+            lane = Math.min(lane + 1, 1);
+            updatePlayerPosition();
+        }
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Move obstacles toward the player
+        for (const obs of obstacles) {
+            obs.position.z += 0.2; // speed of obstacles
+            if (obs.position.z > camera.position.z) {
+                // Reset obstacle far ahead
+                obs.position.z -= 200;
+                obs.position.x = (Math.random() * 6) - 3;
+                const scaleY = 1 + Math.random() * 2;
+                obs.scale.y = scaleY;
+                obs.position.y = scaleY / 2;
+            }
+
+            // Collision detection (simple bounding box)
+            if (obs.position.distanceTo(player.position) < 1.2 &&
+                Math.abs(obs.position.z - player.position.z) < 1 &&
+                Math.abs(obs.position.x - player.position.x) < 1) {
+                alert('Game Over!');
+                window.location.reload();
+            }
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script>
+</body>
+</html>
